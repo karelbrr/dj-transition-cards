@@ -3,10 +3,13 @@ import os
 import re
 from dotenv import load_dotenv
 import json
+from pathlib import Path
 
 from dj_transition_cards import console
 
 NO_RESULT = 1001
+ACRCLOUD_KEYS = ("ACRCLOUD_HOST", "ACRCLOUD_ACCESS_KEY", "ACRCLOUD_ACCESS_SECRET")
+USER_ENV = Path.home() / ".config" / "dj-cards" / ".env"
 
 MASHUP_SEPARATOR = re.compile(r"\s+(?:x|vs\.?|×)\s+", re.IGNORECASE)
 BRACKETS = re.compile(r"\([^)]*\)|\[[^\]]*\]")
@@ -17,7 +20,14 @@ VERSION_WORDS = {"remix", "extended", "edit", "mix", "radio", "version", "origin
 
 class Analyzer():
     def __init__(self, audioPath):
+        # The project's .env first, then the user's; neither overrides a variable already set.
         load_dotenv()
+        load_dotenv(USER_ENV)
+        missing = [name for name in ACRCLOUD_KEYS if not os.getenv(name)]
+        if missing:
+            raise RuntimeError(f"ACRCloud keys missing ({', '.join(missing)}): copy .env.example to .env "
+                               f"or to {USER_ENV} and fill it in")
+
         self.audioPath = audioPath
         self.recognizer = ACRCloudRecognizer({
             'host': os.getenv('ACRCLOUD_HOST'),
